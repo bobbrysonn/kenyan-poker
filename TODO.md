@@ -42,49 +42,42 @@
 
 ### Infrastructure
 
-- [x] Turborepo monorepo scaffold (`packages/engine`, `packages/server`, `packages/client`)
+- [x] Turborepo monorepo scaffold
 - [x] pnpm workspaces configured
 - [x] Supabase project created (`tmvjhzpniofkbqblvsfm`)
-- [x] Database schema: 5 tables (`profiles`, `friendships`, `game_rooms`, `room_players`, `game_history`)
-- [x] Row-Level Security policies on all tables
-- [x] Auth trigger: auto-create profile on signup
+- [x] Database schema: 5 tables + RLS + triggers
 - [x] Generated TypeScript types from live database
-- [x] Client `.env` configured with Supabase URL + anon key
-- [x] Server scaffold (Express + WebSocket)
-- [x] Client scaffold (React 19 + Vite 5 + Tailwind v4)
+- [x] Client `.env` configured (`sb_publishable_...` key)
+- [x] Server `.env` configured (`sb_secret_...` key)
+
+### Auth
+
+- [x] SignUpForm (email + password + username)
+- [x] LoginForm (email + password, Google OAuth)
+- [x] AuthGuard (redirect to /login if unauthenticated)
+- [x] `useAuth` hook (session, profile, signUp, signIn, signOut)
+
+### Lobby & Rooms
+
+- [x] Lobby with Create Room + Join by code
+- [x] Server generates 6-char room codes
+- [x] REST endpoints: `POST /api/rooms`, `GET /api/rooms/:code`, `POST /api/rooms/:code/join`
+- [x] Room waiting screen (player list, copy code, leave)
+- [x] `useRooms` hook (createRoom, joinRoom)
+- [x] WebSocket: JWT validation on connect, player join/leave broadcast
 
 ---
 
 ## 🔴 Pending — v1.0 (Playable Multiplayer)
 
-### 🔑 One-time manual step
+### Game Session (packages/server)
 
-- [ ] **Get Supabase `service_role` key** from [dashboard](https://supabase.com/dashboard/project/tmvjhzpniofkbqblvsfm/settings/api) → paste into `packages/server/.env`
-
-### Auth (packages/client)
-
-- [ ] SignUpForm component (email + password, username)
-- [ ] LoginForm component (email + password, Google OAuth)
-- [ ] AuthGuard component (redirect to /login if unauthenticated)
-- [ ] `useAuth` hook (Supabase session, login, logout, signup)
-- [ ] Password reset flow
-
-### Lobby (packages/client)
-
-- [ ] Dashboard / lobby page with room list
-- [ ] CreateRoom component (generates join code via server)
-- [ ] JoinRoom component (join by code, join by invite link)
-- [ ] Room waiting screen (player list, invite button, start game button)
-- [ ] `useRooms` hook (CRUD for rooms via Supabase)
-
-### Friends (packages/client)
-
-- [ ] FriendsList component (online/offline/in-game status)
-- [ ] Search users by username
-- [ ] Send friend request
-- [ ] Accept/reject friend request
-- [ ] `useFriends` hook
-- [ ] Invite friend to room (sends notification with room code)
+- [ ] Game session: init engine, run turn loop, broadcast game state
+- [ ] Process player actions via WebSocket → engine.processAction()
+- [ ] Turn timer (30s auto-pick)
+- [ ] Reconnection handling (60s grace period)
+- [ ] Host-only "Start Game" button
+- [ ] Text chat relay (already wired, needs UI)
 
 ### Game UI (packages/client)
 
@@ -99,14 +92,14 @@
 - [ ] **`TurnTimer`** — 30-second countdown bar
 - [ ] `useGame` hook — WebSocket connection, game state, action dispatch
 
-### Server (packages/server)
+### Friends (packages/client)
 
-- [ ] Supabase JWT validation on WebSocket connect
-- [ ] Room CRUD endpoints (create with code, join, leave)
-- [ ] Game session: load engine, run turn loop, broadcast state
-- [ ] Turn timer (30s auto-pick)
-- [ ] Reconnection handling (60s grace period)
-- [ ] Text chat relay
+- [ ] FriendsList component (online/offline/in-game status)
+- [ ] Search users by username
+- [ ] Send friend request
+- [ ] Accept/reject friend request
+- [ ] `useFriends` hook
+- [ ] Invite friend to room
 
 ### CSS / Styling
 
@@ -155,7 +148,6 @@
 - [ ] Custom card backs / themes
 - [ ] Mobile app (React Native)
 - [ ] Achievements / badges
-- [ ] In-game currency / betting (if legal)
 
 ---
 
@@ -174,16 +166,14 @@
 
 ```bash
 cd ~/Projects/kenyanpoker
-pnpm install                    # Already done, but re-run if packages changed
-pnpm --filter @kenyan-poker/engine test   # 52 tests — should all pass
+pnpm install
 
-# Set up server env (one-time)
-# 1. Get service_role key from https://supabase.com/dashboard/project/tmvjhzpniofkbqblvsfm/settings/api
-# 2. Edit packages/server/.env → paste it as SUPABASE_SERVICE_ROLE_KEY
+# Run tests
+pnpm --filter @kenyan-poker/engine test   # 52 tests
 
-# Start development
-pnpm dev                        # Starts all packages via turbo
-# or individually:
-pnpm --filter @kenyan-poker/client dev    # Vite dev server on :5173
+# Start dev servers
 pnpm --filter @kenyan-poker/server dev    # Express + WS on :3001
+pnpm --filter @kenyan-poker/client dev    # Vite on :5173
 ```
+
+**All env vars are already configured.** No manual setup needed.

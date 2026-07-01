@@ -752,19 +752,17 @@ Located in `packages/engine/__tests__/properties.test.ts`:
 - [x] Turborepo monorepo setup (engine, server, client)
 - [x] Supabase project + DB schema + RLS + triggers
 - [x] TypeScript types generated from live database
-- [x] Server scaffold (Express + WebSocket + room stubs)
-- [x] Client scaffold (React 19 + Vite 5 + Tailwind v4)
+- [x] Auth UI (sign up, login, Google OAuth, AuthGuard, useAuth hook)
+- [x] Room system (create with 6-char code, join, player list, WS with JWT)
+- [x] WebSocket JWT validation on connect
+- [x] Lobby UI (create room, join by code, room waiting screen)
 
 **In Progress:**
 
-- [ ] Auth UI (sign up, login, Google OAuth)
-- [ ] WebSocket game server JWT validation
-- [ ] Room creation/joining via Supabase
-- [ ] Game session: engine integration, turn loop, broadcast
+- [ ] Game session: engine integration, turn loop, broadcast state
 - [ ] Game UI components (Card, PlayerHand, GameBoard, etc.)
 - [ ] Friends system (search, request, accept)
 - [ ] Game invitations (invite friend to room)
-- [ ] Basic text chat during games
 - [ ] Turn timer (30s auto-pick)
 
 ### v1.1 — Video & Audio
