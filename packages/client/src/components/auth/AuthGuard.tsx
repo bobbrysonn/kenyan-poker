@@ -1,11 +1,11 @@
-import type { ReactNode } from 'react';
+import type { ReactNode } from "react";
 
 interface AuthGuardProps {
-  children: ReactNode;
+	children: ReactNode;
 }
 
 export function AuthGuard({ children }: AuthGuardProps) {
-  // TODO: Check Supabase auth session
-  // For now, always render children (dev mode)
-  return <>{children}</>;
+	// TODO: Check Supabase auth session
+	// For now, always render children (dev mode)
+	return <>{children}</>;
 }
