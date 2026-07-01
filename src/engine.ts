@@ -38,11 +38,21 @@ function nextPlayerIndex(
 	direction: Direction,
 ): number {
 	const n = state.players.length;
-	if (direction === "clockwise") {
-		return (currentIndex + 1) % n;
-	} else {
-		return (currentIndex - 1 + n) % n;
+	let next = currentIndex;
+	// Skip winners and cardless players (they auto-resolve on their turn)
+	for (let attempt = 0; attempt < n; attempt++) {
+		if (direction === "clockwise") {
+			next = (next + 1) % n;
+		} else {
+			next = (next - 1 + n) % n;
+		}
+		// Don't advance to a winner — they're out of the game
+		if (!state.winnerIds.includes(state.players[next].id)) {
+			return next;
+		}
 	}
+	// All remaining players are winners (shouldn't happen due to gameOver check)
+	return next;
 }
 
 // ── Card legality ───────────────────────────────────────────────────────────
@@ -191,7 +201,7 @@ function applyCardPlay(
 	// Check for win (played last card that is non-special)
 	if (player.hand.length === 0 && !isSpecial(card)) {
 		// Block win if player failed to declare "card"
-		if (!s.failedDeclaration.has(playerId)) {
+		if (!s.failedDeclaration.has(playerId) && !s.winnerIds.includes(playerId)) {
 			s.winnerIds.push(playerId);
 			if (s.winnerIds.length === s.players.length - 1) {
 				s.gameOver = true;
@@ -404,7 +414,7 @@ function resolveQuestion(
 	applyVergeCheck(s, s.currentPlayerIndex, true); // answers can't declare, just cleanup
 
 	// Check for win (answered with non-special last card)
-	if (player.hand.length === 0) {
+	if (player.hand.length === 0 && !s.winnerIds.includes(player.id)) {
 		s.winnerIds.push(player.id);
 	}
 
