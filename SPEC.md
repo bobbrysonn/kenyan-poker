@@ -1,8 +1,9 @@
 # Kenyan Poker — Project Specification
 
 > **Version:** 1.0  
-> **Status:** In Development  
-> **Last Updated:** July 2026
+> **Status:** In Development — Phase 2 (Infrastructure Complete)  
+> **Last Updated:** July 1, 2026  
+> **Supabase:** `tmvjhzpniofkbqblvsfm` | **Repo:** [github.com/bobbrysonn/kenyan-poker](https://github.com/bobbrysonn/kenyan-poker)
 
 ---
 
@@ -740,15 +741,27 @@ Located in `packages/engine/__tests__/properties.test.ts`:
 
 ## 19. Roadmap
 
+> **For detailed task tracking, see [TODO.md](TODO.md).** This document provides the high-level vision; TODO.md is the working checklist.
+
 ### v1.0 — Playable Multiplayer (Current)
 
-- [x] Game engine (complete, tested)
-- [x] Formal rulebook (LaTeX)
-- [ ] Turborepo monorepo setup
-- [ ] Supabase project + DB schema + RLS
-- [ ] Auth (sign up, login, Google OAuth)
-- [ ] WebSocket game server (rooms, game loop)
-- [ ] React frontend (lobby, game board, cards)
+**Completed:**
+
+- [x] Game engine (52 tests: 43 unit + 9 property-based)
+- [x] Formal rulebook (LaTeX, Overleaf-compatible)
+- [x] Turborepo monorepo setup (engine, server, client)
+- [x] Supabase project + DB schema + RLS + triggers
+- [x] TypeScript types generated from live database
+- [x] Server scaffold (Express + WebSocket + room stubs)
+- [x] Client scaffold (React 19 + Vite 5 + Tailwind v4)
+
+**In Progress:**
+
+- [ ] Auth UI (sign up, login, Google OAuth)
+- [ ] WebSocket game server JWT validation
+- [ ] Room creation/joining via Supabase
+- [ ] Game session: engine integration, turn loop, broadcast
+- [ ] Game UI components (Card, PlayerHand, GameBoard, etc.)
 - [ ] Friends system (search, request, accept)
 - [ ] Game invitations (invite friend to room)
 - [ ] Basic text chat during games
