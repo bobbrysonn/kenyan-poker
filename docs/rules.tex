@@ -459,10 +459,17 @@ This rule is the Kenyan Poker analogue of UNO's ``UNO!'' call.
     \item They play a card $c$ (legally matching $\Top$),
     \item $c$ is \textbf{non-special} ($c \notin \Special$),
     \item $\Hand_p = \varnothing$ after the play,
-    \item $p \notin \Failed$ (they did not fail a ``card'' declaration).
+    \item $p \notin \Failed$ (they did not fail a ``card'' declaration),
+    \item $p \notin \Winner$ (a player can win at most once).
   \end{enumerate}
   The game ends when $n-1$ players have won (the last remaining player loses).
 \end{definition}
+
+\begin{rule}[Winner leaves rotation]
+  Once a player joins $\Winner$, they are removed from the active turn
+  rotation. The \texttt{nextPlayerIndex} function skips over all players
+  in $\Winner$ when advancing the turn. Winners take no further actions.
+\end{rule}
 
 \begin{definition}[Cardless state]
   \label{sec:cardless}
@@ -550,7 +557,9 @@ $j$ on top card $\Top$:
   \item \textbf{Kickback effect:} If $c$ is K, apply direction logic.
   \item \textbf{Ace effect:} If $c$ is an Ace, set $\CardReq$ accordingly.
   \item \textbf{Turn advance:} $i_{\text{curr}} \leftarrow
-        (i_{\text{curr}} + \Dir) \bmod n$.
+        \func{nextActive}(i_{\text{curr}} + \Dir)$, where
+        $\func{nextActive}$ skips over any $i$ such that
+        $\Players[i].id \in \Winner$.
 \end{enumerate}
 
 \subsubsection{Bomb Counter}
@@ -611,6 +620,11 @@ on the current state, with the following strict priority:
 \begin{invariant}[Winner validity]
   $\forall p \in \Winner : p \notin \Failed$, i.e., no player who failed to
   declare ``card'' can appear in the winner set.
+\end{invariant}
+
+\begin{invariant}[Winner uniqueness]
+  No player appears in $\Winner$ more than once. Formally,
+  $|\Winner|$ equals the number of distinct player IDs in $\Winner$.
 \end{invariant}
 
 \begin{invariant}[Game-over condition]
