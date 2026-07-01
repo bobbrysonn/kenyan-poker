@@ -1,0 +1,680 @@
+\documentclass[11pt,a4paper,twoside]{article}
+
+% ── Overleaf-compatible preamble ──────────────────────────────────────────────
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{mathtools}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{booktabs}
+\usepackage[margin=1in]{geometry}
+\usepackage{fancyhdr}
+\usepackage{lastpage}
+\usepackage{tikz}
+\usepackage{float}
+\usepackage{array}
+\usepackage{longtable}
+\usepackage{multicol}
+
+% ── Theorem environments ──────────────────────────────────────────────────────
+\theoremstyle{definition}
+\newtheorem{definition}{Definition}[section]
+\newtheorem{rule}{Rule}[section]
+\newtheorem{example}{Example}[section]
+\newtheorem{proposition}{Proposition}[section]
+\newtheorem{invariant}{Invariant}[section]
+
+\theoremstyle{remark}
+\newtheorem{remark}{Remark}[section]
+\newtheorem{note}{Note}[section]
+
+% ── Card notation ─────────────────────────────────────────────────────────────
+\newcommand{\Card}[2]{\ensuremath{\langle #1, #2 \rangle}}
+\newcommand{\Suit}[1]{\ensuremath{\text{#1}}}
+\newcommand{\Rank}[1]{\ensuremath{\text{#1}}}
+\newcommand{\Joker}[1]{\ensuremath{\mathcal{J}_{#1}}}
+\newcommand{\Deck}{\ensuremath{\mathcal{D}}}
+\newcommand{\Hand}{\ensuremath{\mathcal{H}}}
+\newcommand{\Pile}{\ensuremath{\mathcal{P}}}
+\newcommand{\State}{\ensuremath{\mathcal{S}}}
+\newcommand{\Action}{\ensuremath{\mathcal{A}}}
+\newcommand{\Top}{\ensuremath{\tau}}
+\newcommand{\Dir}{\ensuremath{\delta}}
+\newcommand{\Players}{\ensuremath{\Pi}}
+\newcommand{\Winner}{\ensuremath{\mathcal{W}}}
+\newcommand{\Cardless}{\ensuremath{\mathcal{C}}}
+\newcommand{\Bomb}{\ensuremath{\mathcal{B}}}
+\newcommand{\Quest}{\ensuremath{\mathcal{Q}}}
+\newcommand{\OnVerge}{\ensuremath{\mathcal{V}}}
+\newcommand{\Failed}{\ensuremath{\mathcal{F}}}
+\newcommand{\CardReq}{\ensuremath{\mathcal{R}}}
+\newcommand{\Special}{\ensuremath{\mathcal{S}}}
+\newcommand{\Normal}{\ensuremath{\mathcal{N}}}
+\newcommand{\func}[1]{\ensuremath{\mathsf{#1}}}
+
+% ── Header / footer ───────────────────────────────────────────────────────────
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small Kenyan Poker Rules}
+\fancyhead[R]{\small v1.0}
+\fancyfoot[C]{\thepage\ of \pageref{LastPage}}
+
+% ── Title ─────────────────────────────────────────────────────────────────────
+\title{\textbf{Kenyan Poker}\\[4pt]
+\large A Formal Specification of Rules and Mechanics}
+\author{}
+\date{July 2026}
+
+\begin{document}
+\maketitle
+\thispagestyle{empty}
+\vspace{2cm}
+\begin{center}
+\emph{``Card!''}
+\end{center}
+\newpage
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Introduction}
+% ══════════════════════════════════════════════════════════════════════════════
+
+Kenyan Poker is a shedding-type card game for 2 or more players, played with
+one or more standard 54-card decks (52 standard cards plus 2 jokers). The
+objective is to be the first player to empty one's hand by playing a
+non-special card as the final card.
+
+The game combines elements of Crazy Eights, UNO, and traditional accumulating
+card games. Its defining features are a rich system of \emph{special cards}
+that include cumulative bombs, question chains, jumps, kickbacks, and a
+dual-power Ace of Spades, together with a ``declare card'' rule that punishes
+players who fail to announce that they are on the verge of winning.
+
+This document provides:
+\begin{itemize}[nosep]
+  \item A complete natural-language rulebook (Sections~\ref{sec:components}--\ref{sec:win}).
+  \item A formal specification of the game state and transition system (Section~\ref{sec:formal}).
+  \item Key invariants and properties (Section~\ref{sec:invariants}).
+\end{itemize}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Components}
+\label{sec:components}
+% ══════════════════════════════════════════════════════════════════════════════
+
+\subsection{The Deck}
+
+One standard deck consists of 54 cards:
+\begin{itemize}[nosep]
+  \item 52 \emph{regular} cards: 4 suits $\times$ 13 ranks.
+  \item 2 \emph{jokers}: one red ($\Joker{red}$), one black ($\Joker{black}$).
+\end{itemize}
+
+\begin{definition}[Card]
+  A card $c$ is either a \textbf{regular card} $\Card{s}{r}$ where
+  $s \in \{\heartsuit, \diamondsuit, \clubsuit, \spadesuit\}$ is a suit and
+  $r \in \{A,2,3,4,5,6,7,8,9,10,J,Q,K\}$ is a rank, or a
+  \textbf{joker} $\Joker{col}$ where $col \in \{\text{red}, \text{black}\}$.
+\end{definition}
+
+\begin{definition}[Card color]
+  The color of a card, $\func{color}(c)$, is:
+  \[
+  \func{color}(c) = \begin{cases}
+    \text{red}   & \text{if } c = \Card{s}{r} \text{ and } s \in \{\heartsuit, \diamondsuit\} \\
+    \text{red}   & \text{if } c = \Joker{red} \\
+    \text{black} & \text{if } c = \Card{s}{r} \text{ and } s \in \{\spadesuit, \clubsuit\} \\
+    \text{black} & \text{if } c = \Joker{black}
+  \end{cases}
+  \]
+\end{definition}
+
+\subsection{Card Classification}
+
+\begin{definition}[Special card]
+  A card $c$ is \textbf{special}, denoted $c \in \Special$, iff:
+  \begin{itemize}[nosep]
+    \item $c$ is a joker, or
+    \item $c = \Card{s}{r}$ and $r \in \{A, 2, 3, 8, J, Q, K\}$.
+  \end{itemize}
+  All other cards are \textbf{non-special} (or \emph{normal}), denoted $\Normal = \Deck \setminus \Special$.
+\end{definition}
+
+\begin{center}
+\begin{tabular}{ccl}
+\toprule
+\textbf{Ranks} & \textbf{Classification} & \textbf{Special Effect} \\
+\midrule
+A    & Special   & Ace --- stops bombs; requests suit or number \\
+2    & Special   & Bomb (2 cards) \\
+3    & Special   & Bomb (3 cards) \\
+4--7 & Normal    & --- \\
+8    & Special   & Question \\
+9,10 & Normal   & --- \\
+J    & Special   & Jump --- skip next player \\
+Q    & Special   & Question \\
+K    & Special   & Kickback --- reverse direction \\
+Joker& Special   & Bomb (5 cards); matches by color \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\subsection{Multiple Decks}
+
+When the number of players $n$ exceeds a threshold $T$ (default $T = 6$), the
+game uses $k = \lceil n / T \rceil$ standard decks, all shuffled together into
+a single draw pile. The number of decks may also be set explicitly for a
+faster or slower game.
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Game Setup}
+\label{sec:setup}
+% ══════════════════════════════════════════════════════════════════════════════
+
+\begin{enumerate}[label=\textbf{S\arabic*.}, leftmargin=*]
+
+  \item \textbf{Shuffle.} Combine $k$ standard 54-card decks and shuffle
+  thoroughly to form the \emph{draw pile} $\Pile_{\text{draw}}$.
+
+  \item \textbf{Deal.} Deal $h$ cards to each player (default $h = 5$).
+  Players may look at their own cards but keep them hidden from others.
+
+  \item \textbf{Starter card.} Draw cards from the top of $\Pile_{\text{draw}}$
+  one at a time, placing each into the \emph{discard pile}
+  $\Pile_{\text{discard}}$, until a \textbf{non-special} card is drawn.
+  This card becomes the \emph{top card} $\Top$, face-up, and the game begins.
+
+  \item \textbf{Starting player.} Choose a starting player uniformly at random
+  from the set of all players $\Players = \{0, 1, \dots, n-1\}$.
+
+  \item \textbf{Direction.} The initial direction of play is clockwise
+  ($\Dir = +1$).
+
+\end{enumerate}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Core Mechanics}
+\label{sec:core}
+% ══════════════════════════════════════════════════════════════════════════════
+
+\subsection{Legal Play}
+
+\begin{definition}[Legal card]
+  A card $c$ is \textbf{legal} to play on top of $\Top$ iff one of the
+  following holds:
+  \begin{enumerate}[nosep, label=(\roman*)]
+    \item $c$ and $\Top$ are both regular and share a suit or rank:
+          $c.\text{suit} = \Top.\text{suit} \;\lor\; c.\text{rank} = \Top.\text{rank}$.
+    \item $c$ is a joker and $\func{color}(c) = \func{color}(\Top)$.
+    \item $\Top$ is a joker and $\func{color}(c) = \func{color}(\Top)$.
+  \end{enumerate}
+\end{definition}
+
+\begin{example}
+  If $\Top = \Card{\spadesuit}{7}$, then $\Card{\spadesuit}{K}$ (same suit),
+  $\Card{\heartsuit}{7}$ (same rank), and $\Joker{black}$ (matching color) are
+  all legal. $\Card{\diamondsuit}{3}$ is \emph{not} legal.
+\end{example}
+
+\subsection{Turn Structure}
+
+Play proceeds in turns around the table according to the current direction
+$\Dir \in \{+1, -1\}$ (clockwise or counterclockwise). On a player's turn,
+they must resolve any pending states in the following priority order:
+
+\begin{enumerate}[label=\textbf{T\arabic*.}, leftmargin=*]
+  \item \textbf{Cardless check.} If the player is \emph{cardless}
+  (see~\S\ref{sec:cardless}), they must draw one card from $\Pile_{\text{draw}}$
+  and their turn ends immediately.
+  \item \textbf{Bomb response.} If a bomb is active targeting this player
+  (see~\S\ref{sec:bomb}), they must respond.
+  \item \textbf{Question response.} If a question chain is active and the
+  player is the questioner (see~\S\ref{sec:question}), they must answer.
+  \item \textbf{Ace request response.} If an Ace request is active
+  (see~\S\ref{sec:ace}), they must honor it or draw.
+  \item \textbf{Normal play.} The player must either play a legal card from
+  their hand, or draw one card from $\Pile_{\text{draw}}$.
+\end{enumerate}
+
+Drawing a card from $\Pile_{\text{draw}}$ always ends the player's turn
+(except when answering a question). Playing a card may trigger special effects
+before the turn advances.
+
+\subsection{Draw Pile Exhaustion}
+
+If $\Pile_{\text{draw}}$ is empty when a player must draw, the discard pile
+$\Pile_{\text{discard}}$ (excluding the current top card $\Top$) is shuffled
+and becomes the new draw pile. $\Top$ remains as the sole card in
+$\Pile_{\text{discard}}$.
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Special Cards}
+\label{sec:special}
+% ══════════════════════════════════════════════════════════════════════════════
+
+\subsection{Bombs (2, 3, Joker)}
+\label{sec:bomb}
+
+\begin{definition}[Bomb value]
+  The bomb value $\func{bomb}(c)$ of a card is:
+  \[
+  \func{bomb}(c) = \begin{cases}
+    2 & \text{if } c = \Card{s}{2} \\
+    3 & \text{if } c = \Card{s}{3} \\
+    5 & \text{if } c \text{ is a joker} \\
+    0 & \text{otherwise}
+  \end{cases}
+  \]
+\end{definition}
+
+\begin{rule}[Initiating a bomb]
+  When a player plays a bomb card (2, 3, or joker legally matching $\Top$),
+  a bomb state $\Bomb$ is created targeting the next player in the current
+  direction. The bomb count is initialized to $\func{bomb}(c)$.
+\end{rule}
+
+\begin{rule}[Bomb response]
+  The targeted player must choose exactly one of:
+  \begin{enumerate}[nosep, label=(\alph*)]
+    \item \textbf{Pick.} Draw $\Bomb.\text{count}$ cards from the draw pile.
+          The bomb is cleared and the player's turn ends.
+    \item \textbf{Counter with bomb.} Play a bomb card (2, 3, or joker) from
+          their hand. The bomb count increases by $\func{bomb}(c)$, and the
+          bomb passes to the \emph{next} player in the current direction.
+          \textbf{Bombs are cumulative and chainable.}
+    \item \textbf{Counter with Ace.} Play any Ace from their hand. The bomb
+          is cleared entirely (see~\S\ref{sec:ace}).
+  \end{enumerate}
+\end{rule}
+
+\begin{example}
+  Player A plays $\Card{\heartsuit}{2}$ (bomb 2) on $\Card{\heartsuit}{9}$.
+  Player B is targeted.\\
+  B counters with $\Card{\clubsuit}{3}$ (bomb 3) $\to$ cumulative bomb count $= 5$.\\
+  Player C is now targeted. C picks 5 cards from the draw pile.
+\end{example}
+
+\subsection{Questions (8, Q)}
+\label{sec:question}
+
+\begin{rule}[Playing a question]
+  When a player plays an 8 or Q legally matching $\Top$, they enter a
+  \emph{question state}. Multiple 8's and Q's may be chained in a single
+  turn, but \emph{only the first must be legal} against $\Top$; subsequent
+  chained 8/Q cards must be legal against the card immediately preceding
+  them.
+\end{rule}
+
+\begin{rule}[Answering]
+  After the question chain, the \textbf{same player} must answer by playing
+  a \emph{legal, non-special} card. If they cannot, they must draw one card
+  from $\Pile_{\text{draw}}$. The question state is then cleared and the
+  player's turn ends.
+\end{rule}
+
+\begin{note}
+  The questioner answers their own question---the question does \emph{not}
+  pass to the next player.
+\end{note}
+
+\subsection{Jump (J)}
+\label{sec:jump}
+
+\begin{rule}[Jump]
+  When a player plays a J legally matching $\Top$, the \emph{next} player in
+  the current direction is skipped. Multiple J's may be chained: $m$ J's skip
+  $m$ players. The skipped player(s) may \textbf{reject} the jump by playing
+  a J of their own; upon rejection, the rejecting player takes their turn
+  immediately.
+\end{rule}
+
+\begin{example}
+  Direction is clockwise. Player A plays JJ (2 J's).\\
+  $\to$ Players B and C are skipped. Player D plays.\\
+  \textbf{Rejection:} Player B plays a J of their own $\to$ B takes their
+  turn immediately; C is not skipped.
+\end{example}
+
+\subsection{Kickback (K)}
+\label{sec:kickback}
+
+\begin{rule}[Kickback]
+  When one or more K's are played:
+  \begin{itemize}[nosep]
+    \item An \textbf{odd} number of K's reverses the direction of play
+          ($\Dir \leftarrow -\Dir$). Turn passes to the next player in the
+          new direction.
+    \item An \textbf{even} number of K's cancels out (direction unchanged).
+          The playing player \textbf{continues} and may play another card.
+  \end{itemize}
+\end{rule}
+
+\begin{example}
+  Direction is clockwise. Player A plays K (odd $\to$ reverse).\\
+  Direction is now counterclockwise. Next player is the one ``before'' A.\\
+  \textbf{Even case:} A plays KK $\to$ direction unchanged, A plays again.
+\end{example}
+
+\subsection{Aces}
+\label{sec:ace}
+
+\subsubsection{Regular Aces ($\Card{s}{A}, s \neq \spadesuit$)}
+
+\begin{rule}[Regular Ace --- defensive]
+  When used as a counter against a bomb: the bomb is cleared. The Ace acts
+  solely as a shield; no request power is granted.
+\end{rule}
+
+\begin{rule}[Regular Ace --- offensive]
+  When played legally (matching $\Top$ by suit or rank): the playing player
+  may request \textbf{either} a specific suit \textbf{or} a specific rank
+  (not both). Subsequent players, in turn order, must either play a card
+  matching the request or draw from $\Pile_{\text{draw}}$. The request
+  persists until satisfied.
+\end{rule}
+
+\subsubsection{Ace of Spades ($\Card{\spadesuit}{A}$)}
+
+The Ace of Spades wields \textbf{dual power}.
+
+\begin{rule}[A$\spadesuit$ --- defensive]
+  When used as a counter against a bomb: one power is consumed to stop the
+  bomb. The remaining power allows the player to request \textbf{either} a
+  suit \textbf{or} a rank (not both).
+\end{rule}
+
+\begin{rule}[A$\spadesuit$ --- offensive]
+  When played legally (matching $\Top$ by suit or rank): \textbf{both} powers
+  are available. The player may request \textbf{both} a suit \textbf{and} a
+  rank simultaneously (effectively requesting a specific card, excluding
+  jokers).
+\end{rule}
+
+\begin{rule}[Ace request resolution]
+  When an Ace request $\CardReq$ is active:
+  \begin{itemize}[nosep]
+    \item If $\CardReq$ specifies both suit $s$ and rank $r$, the next player
+          must play $\Card{s}{r}$ or draw.
+    \item If $\CardReq$ specifies only suit $s$, the next player must play any
+          $\Card{s}{\cdot}$ or draw.
+    \item If $\CardReq$ specifies only rank $r$, the next player must play any
+          $\Card{\cdot}{r}$ or draw.
+  \end{itemize}
+  If a player draws, $\CardReq$ passes to the next player. This continues
+  until someone plays the requested card, at which point $\CardReq$ is
+  cleared. If the draw pile runs out, the request ends.
+\end{rule}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{The ``Card'' Declaration}
+\label{sec:declare}
+% ══════════════════════════════════════════════════════════════════════════════
+
+This rule is the Kenyan Poker analogue of UNO's ``UNO!'' call.
+
+\begin{definition}[On the verge of winning]
+  A player is \textbf{on the verge of winning} iff, after their play, their
+  remaining hand has at most 2 cards and contains at least one non-special
+  card. Formally, player $p$ is on the verge iff:
+  \[
+  0 < |\Hand_p| \leq 2 \;\land\; \exists c \in \Hand_p : c \notin \Special
+  \]
+\end{definition}
+
+\begin{rule}[Declaration obligation]
+  Immediately after playing a card that leaves them on the verge, a player
+  \textbf{must declare ``Card!''} Failure to declare results in:
+  \begin{itemize}[nosep]
+    \item The player is flagged as having \emph{failed to declare}
+          ($p \in \Failed$).
+    \item Should they subsequently play what would have been a winning
+          (non-special) last card, they are \textbf{penalized}: they do
+          \emph{not} win, and must instead draw one card from
+          $\Pile_{\text{draw}}$.
+    \item The failure flag is cleared after the penalty is applied.
+  \end{itemize}
+\end{rule}
+
+\begin{remark}[Strategic implications]
+  When a player is flagged as on the verge ($p \in \OnVerge$), all players
+  are aware of their imminent victory. This enables counterplay:
+  \begin{itemize}[nosep]
+    \item Use K (kickback) to reverse direction so a bomb-holding player can
+          bomb the verge player before they win.
+    \item Use J (jump) to skip the verge player.
+    \item Chain bombs onto the verge player to force them to pick cards,
+          pushing them off the verge.
+  \end{itemize}
+\end{remark}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Win Conditions and Cardless State}
+\label{sec:win}
+% ══════════════════════════════════════════════════════════════════════════════
+
+\begin{definition}[Winning]
+  A player $p$ wins iff:
+  \begin{enumerate}[nosep, label=(\roman*)]
+    \item They play a card $c$ (legally matching $\Top$),
+    \item $c$ is \textbf{non-special} ($c \notin \Special$),
+    \item $\Hand_p = \varnothing$ after the play,
+    \item $p \notin \Failed$ (they did not fail a ``card'' declaration).
+  \end{enumerate}
+  The game ends when $n-1$ players have won (the last remaining player loses).
+\end{definition}
+
+\begin{definition}[Cardless state]
+  \label{sec:cardless}
+  If a player plays a \textbf{special} card as their last card
+  ($\Hand_p = \varnothing$ and $c \in \Special$), they enter the
+  \textbf{cardless} state ($p \in \Cardless$):
+  \begin{itemize}[nosep]
+    \item No player can win during a round where any player is cardless.
+    \item On the cardless player's next turn, they \textbf{must} draw one
+          card from $\Pile_{\text{draw}}$. The cardless flag is cleared, and
+          their turn ends.
+    \item After all cardless players have drawn, normal play and winning
+          resume.
+  \end{itemize}
+\end{definition}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Formal Semantics}
+\label{sec:formal}
+% ══════════════════════════════════════════════════════════════════════════════
+
+This section provides a mathematical specification of the game as a transition
+system. It serves as the single source of truth; the TypeScript implementation
+is a direct encoding of these definitions.
+
+\subsection{Game State}
+
+\begin{definition}[Game state]
+  The game state $\State$ is a tuple:
+  \[
+  \State = (\Players, \Pile_{\text{draw}}, \Pile_{\text{discard}}, \Top, \Dir, i_{\text{curr}},
+            \Bomb, \Quest, \CardReq, \OnVerge, \Failed, \Winner, \Cardless,
+            \text{gameOver})
+  \]
+  where:
+  \begin{itemize}[nosep]
+    \item $\Players = (p_0, p_1, \dots, p_{n-1})$ is the ordered list of
+          players, each $p_k = (id, \Hand_k)$.
+    \item $\Pile_{\text{draw}}$ is the draw pile (a sequence of cards).
+    \item $\Pile_{\text{discard}}$ is the discard pile.
+    \item $\Top$ is the current top card.
+    \item $\Dir \in \{+1, -1\}$ is the direction of play.
+    \item $i_{\text{curr}} \in \{0, \dots, n-1\}$ is the current player index.
+    \item $\Bomb \in \{\bot\} \cup \{(c, o)\}$ where $c \in \mathbb{N}^+$ is
+          the cumulative bomb count and $o$ is the originating player.
+    \item $\Quest \in \{\bot\} \cup \{(m, q)\}$ where $m$ is the chain count
+          and $q$ is the questioning player.
+    \item $\CardReq \in \{\bot\} \cup \{(s, r)\}$ where $s$ is an optional
+          suit and $r$ is an optional rank.
+    \item $\OnVerge, \Failed \subseteq \Players$ are sets of player IDs.
+    \item $\Winner \subseteq \Players$ and $\Cardless \subseteq \Players$.
+    \item $\text{gameOver} \in \{\top, \bot\}$.
+  \end{itemize}
+\end{definition}
+
+\subsection{Transition Function}
+
+Let $\func{step} : \State \times \Action \to \State$ be the state transition
+function. We define the most important transitions below.
+
+\subsubsection{Normal Play}
+
+When player $p = \Players[i_{\text{curr}}]$ plays card $c$ at hand index
+$j$ on top card $\Top$:
+
+\begin{enumerate}[nosep]
+  \item \textbf{Precondition:} $\func{legal}(c, \Top) = \top$.
+  \item \textbf{Effect:}
+        $\Hand_p \leftarrow \Hand_p \setminus \{c\}$;
+        $\Pile_{\text{discard}} \leftarrow \Pile_{\text{discard}} \cdot c$;
+        $\Top \leftarrow c$.
+  \item \textbf{Win check:} If $\Hand_p = \varnothing \land c \notin \Special
+        \land p \notin \Failed$, then $\Winner \leftarrow \Winner \cup \{p\}$.
+  \item \textbf{Cardless check:} If $\Hand_p = \varnothing \land c \in \Special$,
+        then $\Cardless \leftarrow \Cardless \cup \{p\}$.
+  \item \textbf{Verge check:} If $0 < |\Hand_p| \leq 2 \land \Hand_p \cap \Normal
+        \neq \varnothing$, then $\OnVerge \leftarrow \OnVerge \cup \{p\}$.
+        If the accompanying action had $\text{declareCard} = \bot$, then
+        $\Failed \leftarrow \Failed \cup \{p\}$.
+  \item \textbf{Bomb effect:} If $c$ is a bomb card, $\Bomb \leftarrow
+        (\func{bomb}(c), p)$.
+  \item \textbf{Question effect:} If $c$ is 8 or Q, $\Quest \leftarrow (m, p)$.
+  \item \textbf{Jump effect:} If $c$ is J, advance $i_{\text{curr}}$ past
+        $m$ players.
+  \item \textbf{Kickback effect:} If $c$ is K, apply direction logic.
+  \item \textbf{Ace effect:} If $c$ is an Ace, set $\CardReq$ accordingly.
+  \item \textbf{Turn advance:} $i_{\text{curr}} \leftarrow
+        (i_{\text{curr}} + \Dir) \bmod n$.
+\end{enumerate}
+
+\subsubsection{Bomb Counter}
+
+When a player counters with bomb card $c$:
+\[
+\Bomb \leftarrow (\Bomb.\text{count} + \func{bomb}(c), \Bomb.\text{origin})
+\]
+The bomb passes to the next player.
+
+\subsubsection{Bomb Clear with Ace}
+
+When a player plays an Ace as a bomb counter:
+\[
+\Bomb \leftarrow \bot
+\]
+If $c = \Card{\spadesuit}{A}$, the player may set $\CardReq$ with one power
+(either suit or rank).
+
+\subsubsection{Draw from Pile}
+
+When a player draws:
+\[
+\Hand_p \leftarrow \Hand_p \cdot \func{draw}(1),\quad
+\Pile_{\text{draw}} \leftarrow \Pile_{\text{draw}} \setminus \{\text{top card}\}
+\]
+If $\Pile_{\text{draw}} = \varnothing$, recycle $\Pile_{\text{discard}}$
+(excluding $\Top$).
+
+\subsection{Turn Priority}
+
+The transition function dispatches to the appropriate sub-transition based
+on the current state, with the following strict priority:
+
+\[
+\text{Active}(p) = \begin{cases}
+  \text{cardless}   & \text{if } p \in \Cardless \\
+  \text{bomb}       & \text{if } \Bomb \neq \bot \\
+  \text{question}   & \text{if } \Quest \neq \bot \land \Quest.q = p \\
+  \text{ace\_req}   & \text{if } \CardReq \neq \bot \\
+  \text{normal}     & \text{otherwise}
+\end{cases}
+\]
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Invariants and Properties}
+\label{sec:invariants}
+% ══════════════════════════════════════════════════════════════════════════════
+
+\begin{invariant}[Card conservation]
+  At all times, the total number of cards in the game is constant:
+  \[
+  |\Pile_{\text{draw}}| + |\Pile_{\text{discard}}| + \sum_{p \in \Players} |\Hand_p| = k \cdot 54
+  \]
+  where $k$ is the number of decks.
+\end{invariant}
+
+\begin{invariant}[Winner validity]
+  $\forall p \in \Winner : p \notin \Failed$, i.e., no player who failed to
+  declare ``card'' can appear in the winner set.
+\end{invariant}
+
+\begin{invariant}[Game-over condition]
+  $\text{gameOver} = \top \iff |\Winner| = |\Players| - 1$.
+\end{invariant}
+
+\begin{invariant}[Cardless blocking]
+  If $\Cardless \neq \varnothing$, then no new winners can be added to
+  $\Winner$ during the current round---only after all cardless players have
+  drawn.
+\end{invariant}
+
+\begin{proposition}[Termination]
+  Assuming finite decks and the draw-pile recycling mechanism, every game of
+  Kenyan Poker terminates in a finite number of turns.
+\end{proposition}
+
+\begin{proof}[Sketch]
+  Each turn either (a) removes a card from a player's hand, (b) transfers
+  cards between draw pile and hands, or (c) enforces a player to draw. Cards
+  only move between hands and piles---none are created. The bomb and question
+  mechanics are bounded: bomb chains must terminate (a player eventually picks
+  or counters with an Ace), and question chains end when the questioner
+  answers or draws. Since winning removes a player from the active set and
+  $n-1$ wins end the game, the game terminates.
+\end{proof}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\section{Glossary of Notation}
+\label{sec:notation}
+% ══════════════════════════════════════════════════════════════════════════════
+
+\begin{longtable}{c|l}
+\toprule
+\textbf{Symbol} & \textbf{Meaning} \\
+\midrule
+\endfirsthead
+\midrule
+\textbf{Symbol} & \textbf{Meaning} \\
+\midrule
+\endhead
+$\Card{s}{r}$     & Regular card of suit $s$, rank $r$ \\
+$\Joker{col}$     & Joker of color $col \in \{\text{red}, \text{black}\}$ \\
+$\Special$        & Set of all special cards \\
+$\Normal$         & Set of all non-special (normal) cards \\
+$\Deck$           & A standard 54-card deck \\
+$\Hand_p$         & Hand of player $p$ \\
+$\Pile_{\text{draw}}$    & Draw pile (face-down) \\
+$\Pile_{\text{discard}}$ & Discard pile (face-up) \\
+$\Top$            & Top card of the discard pile \\
+$\Dir$            & Direction of play ($+1$ or $-1$) \\
+$\Players$        & Ordered list of players \\
+$i_{\text{curr}}$ & Index of the current player \\
+$\Bomb$           & Bomb state: $(count, origin)$ or $\bot$ \\
+$\Quest$          & Question state: $(chain\_count, player)$ or $\bot$ \\
+$\CardReq$        & Ace request: $(suit?, rank?)$ or $\bot$ \\
+$\OnVerge$        & Set of players who must declare ``card'' \\
+$\Failed$         & Set of players who failed to declare \\
+$\Winner$         & Set of players who have won \\
+$\Cardless$       & Set of players who are cardless \\
+$\func{bomb}(c)$  & Bomb value of card $c$ \\
+$\func{color}(c)$ & Color of card $c$ \\
+$\func{legal}(c, \Top)$ & Whether $c$ is legal on top of $\Top$ \\
+\bottomrule
+\end{longtable}
+
+\end{document}
