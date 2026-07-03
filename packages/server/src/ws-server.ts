@@ -1,14 +1,23 @@
 import { WebSocket, WebSocketServer as WSServer } from "ws";
 import type { Server } from "http";
+import type { PlayerAction } from "@kenyan-poker/engine";
 import { v4 as uuid } from "uuid";
 import { validateToken } from "./db.js";
-import { getRoomPlayers } from "./rooms.js";
+import {
+	getRoomByCode,
+	getRoomPlayers,
+	updateRoomStatus,
+	saveGameHistory,
+} from "./rooms.js";
+import * as gameSession from "./game-session.js";
 
 interface ConnectedClient {
 	ws: WebSocket;
 	userId: string;
 	username: string;
 	roomCode: string;
+	roomId: string;
+	isHost: boolean;
 	seatIndex: number;
 }
 
@@ -39,9 +48,18 @@ export class WebSocketServer {
 				return;
 			}
 
-			// Check player is in the room
-			const players = await getRoomPlayers(roomCode);
-			const playerInRoom = players.find((p) => p.playerId === user.userId);
+			// Resolve the room by its join code, then check membership by UUID
+			const room = await getRoomByCode(roomCode);
+			if (!room) {
+				ws.close(4003, "Room not found");
+				return;
+			}
+			const roomPlayers = Array.isArray(room.room_players)
+				? room.room_players
+				: [];
+			const playerInRoom = roomPlayers.find(
+				(p: any) => p.player_id === user.userId,
+			);
 			if (!playerInRoom) {
 				ws.close(4003, "Not a member of this room");
 				return;
@@ -52,20 +70,22 @@ export class WebSocketServer {
 				ws,
 				userId: user.userId,
 				username: user.username,
-				roomCode,
-				seatIndex: playerInRoom.seatIndex,
+				roomCode: room.code,
+				roomId: room.id,
+				isHost: room.host_id === user.userId,
+				seatIndex: playerInRoom.seat_index,
 			};
 
 			this.clients.set(clientId, client);
 
 			// Join room
-			if (!this.rooms.has(roomCode)) {
-				this.rooms.set(roomCode, new Set());
+			if (!this.rooms.has(client.roomCode)) {
+				this.rooms.set(client.roomCode, new Set());
 			}
-			this.rooms.get(roomCode)!.add(clientId);
+			this.rooms.get(client.roomCode)!.add(clientId);
 
 			// Broadcast join to all room members
-			this.broadcast(roomCode, {
+			this.broadcast(client.roomCode, {
 				type: "player_joined",
 				player: {
 					id: client.userId,
@@ -75,15 +95,26 @@ export class WebSocketServer {
 			});
 
 			// Send current player list to the new client
-			const allPlayers = await getRoomPlayers(roomCode);
+			const allPlayers = await getRoomPlayers(room.id);
 			ws.send(
 				JSON.stringify({
 					type: "room_state",
+					hostId: room.host_id,
 					players: allPlayers,
 				}),
 			);
 
-			console.log(`${client.username} connected to room ${roomCode}`);
+			// If a game is already underway, bring the reconnecting client up to speed
+			if (gameSession.hasSession(client.roomCode)) {
+				ws.send(
+					JSON.stringify({
+						type: "game_state",
+						state: gameSession.getPublicState(client.roomCode, client.userId),
+					}),
+				);
+			}
+
+			console.log(`${client.username} connected to room ${client.roomCode}`);
 
 			ws.on("message", (data) => {
 				try {
@@ -112,15 +143,11 @@ export class WebSocketServer {
 
 		switch (msg.type) {
 			case "action":
-				console.log(`Action from ${client.username}:`, msg.action?.kind);
-				// TODO: Validate action, run engine, broadcast state
+				this.handleAction(client, msg.action);
 				break;
 
 			case "start_game":
-				console.log(
-					`${client.username} requested game start in room ${client.roomCode}`,
-				);
-				// TODO: Initialize engine, broadcast game_state
+				this.handleStartGame(client);
 				break;
 
 			case "chat":
@@ -156,6 +183,130 @@ export class WebSocketServer {
 					}),
 				);
 		}
+	}
+
+	private async handleStartGame(client: ConnectedClient) {
+		if (!client.isHost) {
+			client.ws.send(
+				JSON.stringify({ type: "error", message: "Only the host can start the game" }),
+			);
+			return;
+		}
+		if (gameSession.hasSession(client.roomCode)) {
+			client.ws.send(
+				JSON.stringify({ type: "error", message: "Game already in progress" }),
+			);
+			return;
+		}
+
+		const room = await getRoomByCode(client.roomCode);
+		if (!room) return;
+
+		const players = await getRoomPlayers(client.roomId);
+		if (players.length < 2) {
+			client.ws.send(
+				JSON.stringify({
+					type: "error",
+					message: "Need at least 2 players to start",
+				}),
+			);
+			return;
+		}
+
+		const gameState = gameSession.startSession(client.roomCode, client.roomId, players, {
+			cardsPerPlayer: room.cards_per_player,
+			deckCount: room.deck_count,
+		});
+
+		await updateRoomStatus(client.roomId, "playing");
+
+		this.broadcast(client.roomCode, {
+			type: "game_started",
+			starterPlayerIndex: gameState.currentPlayerIndex,
+		});
+		this.broadcastGameState(client.roomCode);
+		this.armTurnTimer(client.roomCode);
+
+		console.log(`Game started in room ${client.roomCode}`);
+	}
+
+	private async handleAction(client: ConnectedClient, action: PlayerAction) {
+		const result = gameSession.submitAction(client.roomCode, client.userId, action);
+
+		client.ws.send(
+			JSON.stringify({
+				type: "action_result",
+				success: result.ok,
+				message: result.message,
+			}),
+		);
+
+		if (!result.ok) return;
+
+		this.broadcastGameState(client.roomCode);
+		const finished = await this.checkGameOver(client.roomCode);
+		if (!finished) {
+			this.armTurnTimer(client.roomCode);
+		}
+	}
+
+	/** Send each connected client its own redacted view of the game state. */
+	private broadcastGameState(roomCode: string) {
+		const room = this.rooms.get(roomCode);
+		if (!room) return;
+
+		for (const clientId of room) {
+			const c = this.clients.get(clientId);
+			if (!c || c.ws.readyState !== WebSocket.OPEN) continue;
+			const state = gameSession.getPublicState(roomCode, c.userId);
+			c.ws.send(JSON.stringify({ type: "game_state", state }));
+		}
+	}
+
+	/** (Re)start the 30s turn timer; on expiry, auto-play for the current player. */
+	private armTurnTimer(roomCode: string) {
+		gameSession.scheduleTurnTimer(roomCode, async () => {
+			const result = gameSession.forceAutoAction(roomCode);
+			if (!result.ok) return;
+
+			this.broadcastGameState(roomCode);
+			const finished = await this.checkGameOver(roomCode);
+			if (!finished) {
+				this.armTurnTimer(roomCode);
+			}
+		});
+	}
+
+	/** If the game just ended, persist results and notify clients. Returns true if game over. */
+	private async checkGameOver(roomCode: string): Promise<boolean> {
+		const results = gameSession.getFinalResults(roomCode);
+		if (!results) return false;
+
+		gameSession.clearTurnTimer(roomCode);
+
+		try {
+			await saveGameHistory(results);
+			await updateRoomStatus(results[0].roomId, "finished");
+		} catch (err) {
+			console.error("Failed to save game history:", err);
+		}
+
+		const winners = [...results]
+			.sort((a, b) => a.placement - b.placement)
+			.map((r) => {
+				const c = [...this.clients.values()].find(
+					(cl) => cl.userId === r.playerId && cl.roomCode === roomCode,
+				);
+				return {
+					id: r.playerId,
+					username: c?.username ?? "Unknown",
+					placement: r.placement,
+				};
+			});
+
+		this.broadcast(roomCode, { type: "game_over", winners });
+		gameSession.endSession(roomCode);
+		return true;
 	}
 
 	private handleDisconnect(clientId: string) {

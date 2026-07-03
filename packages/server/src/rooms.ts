@@ -104,7 +104,7 @@ export async function leaveRoom(roomId: string, playerId: string) {
 		.eq("player_id", playerId);
 }
 
-/** Get all players in a room */
+/** Get all players in a room (by room UUID, not join code) */
 export async function getRoomPlayers(roomId: string) {
 	const { data, error } = await supabase
 		.from("room_players")
@@ -118,4 +118,43 @@ export async function getRoomPlayers(roomId: string) {
 		seatIndex: rp.seat_index,
 		username: rp.profiles?.username ?? "Unknown",
 	}));
+}
+
+/** Update a room's lifecycle status */
+export async function updateRoomStatus(
+	roomId: string,
+	status: "waiting" | "playing" | "finished",
+) {
+	const update: Record<string, unknown> = { status };
+	if (status === "playing") update.started_at = new Date().toISOString();
+
+	const { error } = await supabase
+		.from("game_rooms")
+		.update(update)
+		.eq("id", roomId);
+
+	if (error) throw new Error(`Failed to update room status: ${error.message}`);
+}
+
+/** Save per-player results at the end of a game */
+export async function saveGameHistory(
+	entries: {
+		roomId: string;
+		playerId: string;
+		placement: number;
+		turnsPlayed: number;
+		cardsRemaining: number;
+	}[],
+) {
+	const { error } = await supabase.from("game_history").insert(
+		entries.map((e) => ({
+			room_id: e.roomId,
+			player_id: e.playerId,
+			placement: e.placement,
+			turns_played: e.turnsPlayed,
+			cards_remaining: e.cardsRemaining,
+		})),
+	);
+
+	if (error) throw new Error(`Failed to save game history: ${error.message}`);
 }

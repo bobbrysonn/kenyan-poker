@@ -1,6 +1,6 @@
 # Kenyan Poker — Project TODO
 
-> **Last updated:** July 1, 2026  
+> **Last updated:** July 3, 2026  
 > **Supabase project:** `tmvjhzpniofkbqblvsfm`  
 > **Repo:** <https://github.com/bobbrysonn/kenyan-poker>
 
@@ -65,6 +65,18 @@
 - [x] Room waiting screen (player list, copy code, leave)
 - [x] `useRooms` hook (createRoom, joinRoom)
 - [x] WebSocket: JWT validation on connect, player join/leave broadcast
+- [x] Bug: WS connect checked room membership by join code instead of room UUID — every connection was silently rejected as "not a member". Found & fixed.
+
+### Game Session (packages/server)
+
+- [x] Game session: init engine, run turn loop, broadcast game state (`game-session.ts`)
+- [x] Process player actions via WebSocket → `engine.processAction()`
+- [x] Turn timer (30s auto-pick — context-aware: bomb/question/plain pick)
+- [x] Host-only "Start Game" button (client wired, server-enforced)
+- [x] Per-client hand redaction (opponents see card counts only, not hands)
+- [x] Save results to `game_history` + room status → `finished` on game over
+- [x] 9 unit tests for `game-session.ts` (turn ownership, redaction, auto-timer action, full game to completion) — no DB dependency
+- [x] End-to-end smoke test against live server + real Supabase project (manual, one-off)
 
 ---
 
@@ -72,11 +84,7 @@
 
 ### Game Session (packages/server)
 
-- [ ] Game session: init engine, run turn loop, broadcast game state
-- [ ] Process player actions via WebSocket → engine.processAction()
-- [ ] Turn timer (30s auto-pick)
 - [ ] Reconnection handling (60s grace period)
-- [ ] Host-only "Start Game" button
 - [ ] Text chat relay (already wired, needs UI)
 
 ### Game UI (packages/client)
@@ -153,7 +161,8 @@
 
 ## 🧪 Pending — Testing
 
-- [ ] Server WebSocket tests (room lifecycle, action validation)
+- [x] Server game-session tests (turn ownership, redaction, full game to completion) — see Done above
+- [ ] Server WebSocket tests (room lifecycle via mocked `ws` connections)
 - [ ] Server API tests (REST endpoints, auth middleware)
 - [ ] Client component tests (React Testing Library)
 - [ ] Client hook tests (useGame, useAuth, useWebRTC)
@@ -170,6 +179,7 @@ pnpm install
 
 # Run tests
 pnpm --filter @kenyan-poker/engine test   # 52 tests
+pnpm --filter @kenyan-poker/server test   # 9 tests (game-session)
 
 # Start dev servers
 pnpm --filter @kenyan-poker/server dev    # Express + WS on :3001

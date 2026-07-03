@@ -1,8 +1,8 @@
 # Kenyan Poker — Project Specification
 
 > **Version:** 1.0  
-> **Status:** In Development — Phase 2 (Infrastructure Complete)  
-> **Last Updated:** July 1, 2026  
+> **Status:** In Development — Phase 3 (Game Session Complete, Game UI Next)  
+> **Last Updated:** July 3, 2026  
 > **Supabase:** `tmvjhzpniofkbqblvsfm` | **Repo:** [github.com/bobbrysonn/kenyan-poker](https://github.com/bobbrysonn/kenyan-poker)
 
 ---
@@ -756,14 +756,18 @@ Located in `packages/engine/__tests__/properties.test.ts`:
 - [x] Room system (create with 6-char code, join, player list, WS with JWT)
 - [x] WebSocket JWT validation on connect
 - [x] Lobby UI (create room, join by code, room waiting screen)
+- [x] Game session: engine integration, turn loop, broadcast state (`game-session.ts`)
+- [x] Turn timer (30s auto-pick, context-aware for bomb/question)
+- [x] Per-client hand redaction (anti-cheat: opponents see counts only)
+- [x] Game history persistence + room status transitions on game over
+- [x] Host-only "Start Game" button
 
 **In Progress:**
 
-- [ ] Game session: engine integration, turn loop, broadcast state
 - [ ] Game UI components (Card, PlayerHand, GameBoard, etc.)
 - [ ] Friends system (search, request, accept)
 - [ ] Game invitations (invite friend to room)
-- [ ] Turn timer (30s auto-pick)
+- [ ] Reconnection handling (60s grace period)
 
 ### v1.1 — Video & Audio
 
