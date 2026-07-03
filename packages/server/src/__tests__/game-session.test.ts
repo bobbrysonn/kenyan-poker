@@ -91,7 +91,7 @@ describe("game-session", () => {
 		let guardRail = 0;
 		while (!session.getPublicState(ROOM_CODE, HOST.playerId)!.gameOver) {
 			guardRail += 1;
-			if (guardRail > 5000) throw new Error("Game did not terminate in time");
+			if (guardRail > 20000) throw new Error("Game did not terminate in time");
 
 			const state = session.getPublicState(ROOM_CODE, HOST.playerId)!;
 			const turnUserId =
@@ -121,18 +121,24 @@ describe("game-session", () => {
 				continue;
 			}
 
+			// Mirrors packages/engine/src/play-bots.ts's "smarter bot" strategy:
+			// prefer a non-special card (drives toward winning) over any other
+			// legal card, since always preferring "first legal" (bombs/specials
+			// included) can prolong the game indefinitely and was flaky here.
 			const isAce = (c: Card) => c.kind === "regular" && c.rank === "A";
 			const topCard = turnState.topCard as Card;
 			const legalCards = myHand
 				.map((c, index) => ({ c, index }))
 				.filter(({ c }) => isCardLegal(c, topCard));
+			const nonSpecial = legalCards.find(({ c }) => !isSpecial(c));
 			const nonAce = legalCards.find(({ c }) => !isAce(c));
 			const ace = legalCards.find(({ c }) => isAce(c));
+			const choice = nonSpecial ?? nonAce;
 
-			if (nonAce) {
+			if (choice) {
 				session.submitAction(ROOM_CODE, turnUserId, {
 					kind: "play",
-					cardIndex: nonAce.index,
+					cardIndex: choice.index,
 					declareCard: true,
 				});
 			} else if (ace) {

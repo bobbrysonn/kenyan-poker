@@ -89,16 +89,18 @@
 
 ### Game UI (packages/client)
 
-- [ ] **`Card` component** — CSS-drawn playing card with suit, rank, color
-- [ ] **`PlayerHand` component** — scrollable hand, legal/illegal highlights, click to play
-- [ ] **`GameBoard` component** — top card, draw pile count, discard count
-- [ ] **`OpponentsView` component** — card counts, status badges, turn indicator
-- [ ] **`ActionBar` component** — contextual prompts (bomb, question, ace request)
+- [x] **`Card` component** — CSS-drawn playing card with suit, rank, color (5 RTL tests)
+- [x] `useGame` hook — WebSocket connection, game state, action dispatch (`lib/ws.ts` + `hooks/useGame.ts`)
+- [x] Bug: Tailwind v4 was never actually processing utility classes — `postcss.config.js` held a stray v3-style `tailwind.config.js` body instead of a PostCSS plugin config, so only the CSS reset rendered. Found & fixed (added `@tailwindcss/postcss`).
+- [x] Bug: `useGame`'s connect effect depended on an inline callback (`onUnauthenticated`) recreated every render, causing an infinite WebSocket reconnect loop on every state update. Fixed with a ref so the effect only depends on `roomCode`.
+- [ ] **`PlayerHand` component** — dedicated component (currently inlined in `GameRoom`); scrollable hand, ace/bomb/question response UI
+- [ ] **`GameBoard` component** — dedicated component (currently inlined in `GameRoom`)
+- [ ] **`OpponentsView` component** — dedicated component (currently inlined in `GameRoom`)
+- [ ] **`ActionBar` component** — contextual prompts (bomb, question, ace request) — not yet handled by the client at all
 - [ ] **`DeclareCard` component** — prominent "CARD!" button when on verge
-- [ ] **`DirectionIndicator`** — clockwise ↻ / counterclockwise ↺
-- [ ] **`WinnerOverlay`** — shown at game end
-- [ ] **`TurnTimer`** — 30-second countdown bar
-- [ ] `useGame` hook — WebSocket connection, game state, action dispatch
+- [ ] **`DirectionIndicator`** — currently just text, no icon/animation
+- [ ] **`WinnerOverlay`** — currently a plain list, not a dedicated overlay
+- [ ] **`TurnTimer`** — 30-second countdown bar (server-side timer exists; client doesn't show it)
 
 ### Friends (packages/client)
 
@@ -162,9 +164,11 @@
 ## 🧪 Pending — Testing
 
 - [x] Server game-session tests (turn ownership, redaction, full game to completion) — see Done above
+- [x] Client test infra wired (jsdom + RTL + jest-dom via `vite.config.ts` `test` block + `test-setup.ts`) and first component test (`Card`, 5 tests)
+- [x] Full-browser E2E smoke test (real dev server + real Supabase + 2 accounts, one driven via Chrome, one via a scripted WS bot) — manual, one-off, not automated
 - [ ] Server WebSocket tests (room lifecycle via mocked `ws` connections)
 - [ ] Server API tests (REST endpoints, auth middleware)
-- [ ] Client component tests (React Testing Library)
+- [ ] More client component tests (PlayerHand, GameBoard, etc. as they're built)
 - [ ] Client hook tests (useGame, useAuth, useWebRTC)
 - [ ] E2E tests (Playwright: login → create room → invite → play → win)
 - [ ] WebRTC connectivity tests
@@ -180,6 +184,7 @@ pnpm install
 # Run tests
 pnpm --filter @kenyan-poker/engine test   # 52 tests
 pnpm --filter @kenyan-poker/server test   # 9 tests (game-session)
+pnpm --filter @kenyan-poker/client test   # 5 tests (Card component)
 
 # Start dev servers
 pnpm --filter @kenyan-poker/server dev    # Express + WS on :3001
