@@ -762,10 +762,11 @@ Located in `packages/engine/__tests__/properties.test.ts`:
 - [x] Game history persistence + room status transitions on game over
 - [x] Host-only "Start Game" button
 - [x] `Card` UI component + `useGame` hook (`lib/ws.ts`) — first slice of Game UI, verified in a real browser end-to-end against live Supabase
+- [x] `ActionBar` component — bomb/question pick prompts + Ace suit/rank request UI; `GameRoom`'s card click/pick handling is now context-aware (dispatches `bomb_response`/`answer`/`play` correctly)
 
 **In Progress:**
 
-- [ ] Remaining Game UI components (PlayerHand, GameBoard, OpponentsView, ActionBar, DeclareCard, WinnerOverlay, TurnTimer — currently inlined ad hoc in `GameRoom`)
+- [ ] Remaining Game UI components (PlayerHand, GameBoard, OpponentsView, DeclareCard, WinnerOverlay, TurnTimer — currently inlined ad hoc in `GameRoom`)
 - [ ] Friends system (search, request, accept)
 - [ ] Game invitations (invite friend to room)
 - [ ] Reconnection handling (60s grace period)

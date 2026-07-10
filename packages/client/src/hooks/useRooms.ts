@@ -12,6 +12,8 @@ interface Room {
 	created_at: string;
 }
 
+const apiBaseUrl = (import.meta.env.VITE_API_URL ?? "").replace(/\/$/, "");
+
 export function useRooms() {
 	const { session, user } = useAuth();
 	const [loading, setLoading] = useState(false);
@@ -28,7 +30,7 @@ export function useRooms() {
 
 		try {
 			const token = await getAccessToken();
-			const resp = await fetch("/api/rooms", {
+			const resp = await fetch(`${apiBaseUrl}/api/rooms`, {
 				method: "POST",
 				headers: {
 					"Content-Type": "application/json",
@@ -55,7 +57,7 @@ export function useRooms() {
 
 		try {
 			const token = await getAccessToken();
-			const resp = await fetch(`/api/rooms/${code}/join`, {
+			const resp = await fetch(`${apiBaseUrl}/api/rooms/${code}/join`, {
 				method: "POST",
 				headers: {
 					"Content-Type": "application/json",

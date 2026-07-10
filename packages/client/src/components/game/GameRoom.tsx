@@ -1,7 +1,16 @@
+import { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { isCardLegal } from "@kenyan-poker/engine";
+import {
+	isCardLegal,
+	isBombCard,
+	isRegularAce,
+	isAceOfSpades,
+	isSpecial,
+} from "@kenyan-poker/engine";
+import type { Card as CardType, Suit, Rank } from "@kenyan-poker/engine";
 import { useGame } from "@/hooks/useGame";
 import { Card } from "@/components/ui/Card";
+import { ActionBar, type PendingAce } from "@/components/game/ActionBar";
 
 export function GameRoom() {
 	const { roomCode } = useParams<{ roomCode: string }>();
@@ -16,6 +25,7 @@ export function GameRoom() {
 		startGame,
 		sendAction,
 	} = useGame({ roomCode, onUnauthenticated: () => navigate("/login") });
+	const [pendingAce, setPendingAce] = useState<PendingAce | null>(null);
 
 	const handleCopyCode = () => {
 		navigator.clipboard.writeText(roomCode || "");
@@ -23,6 +33,65 @@ export function GameRoom() {
 
 	const me = gameState?.players.find((p) => p.id === gameState.yourPlayerId);
 	const isMyTurn = gameState ? gameState.currentPlayerIndex === gameState.yourPlayerId : false;
+
+	function cardLegalForDisplay(card: CardType): boolean | undefined {
+		if (!isMyTurn || !gameState) return undefined;
+		if (gameState.bomb) {
+			return isBombCard(card) || isRegularAce(card) || isAceOfSpades(card);
+		}
+		if (gameState.question) {
+			return !isSpecial(card) && isCardLegal(card, gameState.topCard);
+		}
+		return isCardLegal(card, gameState.topCard);
+	}
+
+	function handleCardClick(card: CardType, index: number) {
+		if (!gameState) return;
+		if (gameState.bomb) {
+			sendAction({ kind: "bomb_response", action: { kind: "counter", cardIndex: index } });
+			return;
+		}
+		if (gameState.question) {
+			sendAction({ kind: "answer", cardIndex: index, isAnswer: true });
+			return;
+		}
+		if (isRegularAce(card) || isAceOfSpades(card)) {
+			setPendingAce({ cardIndex: index, suit: null, rank: null });
+			return;
+		}
+		sendAction({ kind: "play", cardIndex: index, declareCard: true });
+	}
+
+	function handlePick() {
+		if (!gameState) return;
+		if (gameState.bomb) {
+			sendAction({ kind: "bomb_response", action: "pick" });
+		} else if (gameState.question) {
+			sendAction({ kind: "answer", cardIndex: -1, isAnswer: true });
+		} else {
+			sendAction({ kind: "pick" });
+		}
+	}
+
+	function handleSetPendingAceField(field: "suit" | "rank", value: Suit | Rank) {
+		setPendingAce((prev) => (prev ? { ...prev, [field]: value } : prev));
+	}
+
+	function handleConfirmAce() {
+		if (!pendingAce || !pendingAce.suit || !pendingAce.rank) return;
+		sendAction({
+			kind: "play",
+			cardIndex: pendingAce.cardIndex,
+			declareCard: true,
+			requestSuit: pendingAce.suit,
+			requestRank: pendingAce.rank,
+		} as any);
+		setPendingAce(null);
+	}
+
+	function handleCancelAce() {
+		setPendingAce(null);
+	}
 
 	return (
 		<div className="min-h-screen bg-felt p-4">
@@ -141,6 +210,19 @@ export function GameRoom() {
 						</div>
 					)}
 
+					{isMyTurn && (
+						<ActionBar
+							gameState={gameState}
+							isMyTurn={isMyTurn}
+							pendingAce={pendingAce}
+							onSetPendingAceField={handleSetPendingAceField}
+							onConfirmAce={handleConfirmAce}
+							onCancelAce={handleCancelAce}
+							onBombPick={handlePick}
+							onQuestionPick={handlePick}
+						/>
+					)}
+
 					{/* My hand — TODO: replace with a dedicated PlayerHand component */}
 					{me?.hand && (
 						<div>
@@ -148,29 +230,22 @@ export function GameRoom() {
 								{isMyTurn ? "Your turn" : "Your hand"} ({me.hand.length} cards)
 							</h3>
 							<div className="flex flex-wrap gap-2">
-								{me.hand.map((card, index) => {
-									const legal = isMyTurn && isCardLegal(card, gameState.topCard);
-									return (
-										<Card
-											key={index}
-											card={card}
-											legal={isMyTurn ? legal : undefined}
-											onClick={
-												isMyTurn
-													? () =>
-															sendAction({
-																kind: "play",
-																cardIndex: index,
-															})
-													: undefined
-											}
-										/>
-									);
-								})}
+								{me.hand.map((card, index) => (
+									<Card
+										key={index}
+										card={card}
+										legal={cardLegalForDisplay(card)}
+										onClick={
+											isMyTurn && !pendingAce
+												? () => handleCardClick(card, index)
+												: undefined
+										}
+									/>
+								))}
 							</div>
-							{isMyTurn && (
+							{isMyTurn && !pendingAce && !gameState.bomb && !gameState.question && (
 								<button
-									onClick={() => sendAction({ kind: "pick" })}
+									onClick={handlePick}
 									className="mt-4 text-green-400 hover:text-gold transition text-sm border border-green-700 rounded-lg px-4 py-2"
 								>
 									Pick a card

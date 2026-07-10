@@ -1,0 +1,14 @@
+services:
+  - type: web
+    runtime: node
+    name: kenyan-poker-server
+    plan: free
+    region: oregon
+    buildCommand: pnpm install --frozen-lockfile && pnpm --filter @kenyan-poker/engine build && pnpm --filter @kenyan-poker/server build
+    startCommand: pnpm --filter @kenyan-poker/server start
+    healthCheckPath: /health
+    envVars:
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SECRET_KEY
+        sync: false
