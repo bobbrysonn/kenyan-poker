@@ -1,6 +1,6 @@
 # Kenyan Poker — Project TODO
 
-> **Last updated:** July 3, 2026  
+> **Last updated:** July 10, 2026
 > **Supabase project:** `tmvjhzpniofkbqblvsfm`  
 > **Repo:** <https://github.com/bobbrysonn/kenyan-poker>
 
@@ -121,9 +121,11 @@
 
 ### Deployment
 
-- [ ] Deploy client to Vercel
-- [ ] Deploy server to Fly.io or Railway
-- [ ] CI/CD pipeline (GitHub Actions: lint, test, deploy)
+- [x] Deploy client to Vercel: <https://kenyan-poker.vercel.app>
+- [x] Deploy server to Render: <https://kenyan-poker-server.onrender.com>
+- [x] Configure GitHub-based automatic production deploys for Vercel and Render
+- [ ] Add the Vercel production URL to Supabase Auth's allowed redirect URLs for Google OAuth
+- [ ] CI checks (lint, test, typecheck) on pull requests
 
 ---
 

@@ -1,8 +1,8 @@
 # Kenyan Poker — Project Specification
 
 > **Version:** 1.0  
-> **Status:** In Development — Phase 3 (Game Session Complete, Game UI In Progress)  
-> **Last Updated:** July 3, 2026  
+> **Status:** In Development — Phase 3 (Playable deployment live, Game UI In Progress)
+> **Last Updated:** July 10, 2026
 > **Supabase:** `tmvjhzpniofkbqblvsfm` | **Repo:** [github.com/bobbrysonn/kenyan-poker](https://github.com/bobbrysonn/kenyan-poker)
 
 ---
@@ -122,7 +122,7 @@ The executable reference implementation is in **[packages/engine/src/engine.ts](
 | **Real-time** | WebSocket (`ws` library) | Low-latency game state push |
 | **Video/Audio** | WebRTC (browser API) | Peer-to-peer, no server media cost |
 | **Testing** | Vitest + fast-check | Unit + property-based, already in place |
-| **Deployment** | Fly.io / Railway (server), Vercel (client), Supabase (DB) | TBD |
+| **Deployment** | Render (server), Vercel (client), Supabase (DB) | Live hobby deployment |
 
 ---
 
@@ -684,28 +684,30 @@ App
 
 | Component | Platform | Why |
 |-----------|----------|-----|
-| Client (SPA) | **Vercel** | Free tier, auto-deploys from GitHub, global CDN |
-| Game Server | **Fly.io** or **Railway** | WebSocket support, easy scaling, affordable |
+| Client (SPA) | **Vercel** | Free tier, GitHub deployments, global CDN |
+| Game Server | **Render** | Free Node web service with WebSocket support |
 | Database + Auth | **Supabase** | Managed, free tier sufficient for launch |
 
-### CI/CD
+### Live Services
 
-- GitHub Actions for:
-  - Lint + type-check + test on every PR
-  - Deploy client to Vercel on merge to `main`
-  - Deploy server to Fly.io on merge to `main`
+- Client: <https://kenyan-poker.vercel.app>
+- Game server: <https://kenyan-poker-server.onrender.com>
+- Health check: <https://kenyan-poker-server.onrender.com/health>
+- Vercel and Render both deploy automatically from `main`.
+- Render Free may sleep after idle periods; the first connection after sleep can be delayed.
 
 ### Environment Variables
 
 ```
 # Client (.env)
 VITE_SUPABASE_URL=https://xxxxx.supabase.co
-VITE_SUPABASE_ANON_KEY=eyJ...
-VITE_WS_URL=wss://api.kenyanpoker.com/ws
+VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
+VITE_API_URL=https://kenyan-poker-server.onrender.com
+VITE_WS_URL=wss://kenyan-poker-server.onrender.com/ws
 
 # Server (.env)
 SUPABASE_URL=https://xxxxx.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=eyJ...
+SUPABASE_SECRET_KEY=sb_secret_...
 PORT=3001
 ```
 
@@ -763,6 +765,7 @@ Located in `packages/engine/__tests__/properties.test.ts`:
 - [x] Host-only "Start Game" button
 - [x] `Card` UI component + `useGame` hook (`lib/ws.ts`) — first slice of Game UI, verified in a real browser end-to-end against live Supabase
 - [x] `ActionBar` component — bomb/question pick prompts + Ace suit/rank request UI; `GameRoom`'s card click/pick handling is now context-aware (dispatches `bomb_response`/`answer`/`play` correctly)
+- [x] Production deployment: Vercel client + Render WebSocket server, with GitHub-based automatic deploys
 
 **In Progress:**
 
@@ -770,6 +773,7 @@ Located in `packages/engine/__tests__/properties.test.ts`:
 - [ ] Friends system (search, request, accept)
 - [ ] Game invitations (invite friend to room)
 - [ ] Reconnection handling (60s grace period)
+- [ ] Add `https://kenyan-poker.vercel.app` to Supabase Auth's allowed redirect URLs for Google OAuth
 
 ### v1.1 — Video & Audio
 
